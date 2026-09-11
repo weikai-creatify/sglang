@@ -49,7 +49,7 @@ from sglang.srt.layers.attention.base_attn_backend import (
     SharedReadEnds,
 )
 from sglang.srt.layers.attention.dsa.utils import is_dsa_enable_prefill_cp
-from sglang.srt.layers.attention.dsv4.indexer_plan import (
+from sglang.srt.layers.attention.dsv4.indexer_policy import (
     CANDIDATE_FILTERED,
     candidate_graph_limits,
 )

@@ -24,10 +24,10 @@ from typing import Optional
 
 import torch
 
-from sglang.srt.layers.attention.dsv4.indexer_plan import (
+from sglang.srt.layers.attention.dsv4.indexer_policy import (
     CandidateRole,
-    IndexerPlan,
-    resolve_indexer_plan,
+    IndexerExecutionPolicy,
+    resolve_indexer_policy,
 )
 from sglang.srt.model_executor.runner_backend_utils.breakable_cuda_graph.context import (
     is_in_breakable_cuda_graph,
@@ -79,10 +79,10 @@ def get_capture_dsa_variant() -> Optional[str]:
     return _capture_dsa_variant
 
 
-def get_low_ratio_indexer_plan(
+def get_low_ratio_indexer_policy(
     compress_ratio: int, candidate_role: CandidateRole = CandidateRole.NONE
-) -> IndexerPlan:
-    return resolve_indexer_plan(compress_ratio, candidate_role, _capture_dsa_variant)
+) -> IndexerExecutionPolicy:
+    return resolve_indexer_policy(compress_ratio, candidate_role, _capture_dsa_variant)
 
 
 def _set_capture_dsa_variant(variant: Optional[str]) -> None:

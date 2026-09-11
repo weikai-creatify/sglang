@@ -14,7 +14,7 @@ from torch import nn
 
 from sglang.kernels.ops.attention.dsv4 import linear_bf16_fp32
 from sglang.kernels.ops.attention.dsv4.rmsnorm_fp32 import rmsnorm_fp32
-from sglang.srt.layers.attention.dsv4.indexer_plan import CandidateRole
+from sglang.srt.layers.attention.dsv4.indexer_policy import CandidateRole
 from sglang.srt.layers.attention.dsv4.torch_quant import (
     fake_quant_compressed_kv,
     fake_quant_fp4,

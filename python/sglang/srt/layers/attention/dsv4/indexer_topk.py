@@ -7,14 +7,17 @@ from sglang.kernels.ops.attention.dsv4 import (
     topk_transform_paged_v2,
 )
 from sglang.srt.layers.attention.dsv4.indexer import select_candidate_blocks
-from sglang.srt.layers.attention.dsv4.indexer_plan import CandidateRole, IndexerPlan
+from sglang.srt.layers.attention.dsv4.indexer_policy import (
+    CandidateRole,
+    IndexerExecutionPolicy,
+)
 
 
 def apply_decode_candidates(
     logits: torch.Tensor,
     seq_lens: torch.Tensor,
     *,
-    plan: IndexerPlan,
+    policy: IndexerExecutionPolicy,
     topk_blocks: int,
     block_size: int,
     published: Optional[torch.Tensor],
@@ -26,10 +29,10 @@ def apply_decode_candidates(
     unreachable. This path is graph-captured and must not synchronize with the host.
     Work scales with allocated page-table capacity, not live sequence length.
     """
-    if plan.candidate_action is CandidateRole.NONE:
+    if policy.candidate_action is CandidateRole.NONE:
         return logits, None
 
-    is_candidate_source = plan.candidate_action is CandidateRole.PUBLISH
+    is_candidate_source = policy.candidate_action is CandidateRole.PUBLISH
 
     if (
         logits.is_cuda

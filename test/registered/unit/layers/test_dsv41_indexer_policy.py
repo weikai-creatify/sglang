@@ -5,10 +5,10 @@ from unittest.mock import patch
 
 import torch
 
-from sglang.srt.layers.attention.dsv4.indexer_plan import (
+from sglang.srt.layers.attention.dsv4.indexer_policy import (
     CandidateRole,
     candidate_graph_limits,
-    resolve_indexer_plan,
+    resolve_indexer_policy,
 )
 from sglang.srt.layers.attention.dsv4.indexer_topk import (
     apply_decode_candidates,
@@ -21,7 +21,7 @@ from sglang.test.test_utils import CustomTestCase
 register_cpu_ci(est_time=5, suite="base-a-test-cpu")
 
 
-class TestIndexerPlan(CustomTestCase):
+class TestIndexerPolicy(CustomTestCase):
     def test_layer_roles_and_capture_variants(self):
         for layer, source, role in (
             (0, -1, CandidateRole.NONE),
@@ -41,12 +41,12 @@ class TestIndexerPlan(CustomTestCase):
         ):
             for ratio, role in product((1, 2), CandidateRole):
                 with self.subTest(variant=variant, ratio=ratio, role=role):
-                    plan = resolve_indexer_plan(ratio, role, variant)
-                    self.assertEqual(plan.select_all, ratio in all_ratios)
+                    policy = resolve_indexer_policy(ratio, role, variant)
+                    self.assertEqual(policy.select_all, ratio in all_ratios)
                     self.assertIs(
-                        plan.candidate_action, CandidateRole.NONE if bypass else role
+                        policy.candidate_action, CandidateRole.NONE if bypass else role
                     )
-                    self.assertEqual(plan.mask_topk, role is CandidateRole.CONSUME)
+                    self.assertEqual(policy.mask_topk, role is CandidateRole.CONSUME)
 
     def test_graph_limits_keep_threshold_order_and_coverage(self):
         for ratios, topk, span, expected in (
@@ -72,9 +72,9 @@ class TestIndexerPlan(CustomTestCase):
     def test_publish_consume_and_bypass_are_distinct(self):
         scores = torch.tensor([[1.0, 2.0, 9.0, 8.0], [3.0, 4.0, 99.0, 99.0]])
         lengths = torch.tensor([4, 2])
-        source = resolve_indexer_plan(1, CandidateRole.PUBLISH)
+        source = resolve_indexer_policy(1, CandidateRole.PUBLISH)
         visible, published = apply_decode_candidates(
-            scores, lengths, plan=source, topk_blocks=1, block_size=2, published=None
+            scores, lengths, policy=source, topk_blocks=1, block_size=2, published=None
         )
         self.assertTrue(torch.isneginf(visible[1, 2:]).all())
         torch.testing.assert_close(
@@ -84,16 +84,18 @@ class TestIndexerPlan(CustomTestCase):
         consumed, output = apply_decode_candidates(
             scores,
             lengths,
-            plan=resolve_indexer_plan(1, CandidateRole.CONSUME),
+            policy=resolve_indexer_policy(1, CandidateRole.CONSUME),
             topk_blocks=1,
             block_size=2,
             published=published,
         )
         self.assertIsNone(output)
         self.assertTrue(torch.isneginf(consumed[~published]).all())
-        bypass = resolve_indexer_plan(1, CandidateRole.CONSUME, "candidate_unfiltered")
+        bypass = resolve_indexer_policy(
+            1, CandidateRole.CONSUME, "candidate_unfiltered"
+        )
         unchanged, output = apply_decode_candidates(
-            scores, lengths, plan=bypass, topk_blocks=1, block_size=2, published=None
+            scores, lengths, policy=bypass, topk_blocks=1, block_size=2, published=None
         )
         self.assertIs(unchanged, scores)
         self.assertIsNone(output)

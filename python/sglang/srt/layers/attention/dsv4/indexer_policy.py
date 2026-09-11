@@ -16,7 +16,7 @@ class CandidateRole(Enum):
         return cls.NONE
 
 
-class IndexerPlan(NamedTuple):
+class IndexerExecutionPolicy(NamedTuple):
     select_all: bool
     candidate_action: CandidateRole
     mask_topk: bool
@@ -43,11 +43,11 @@ def candidate_graph_limits(
     return limits
 
 
-def resolve_indexer_plan(
+def resolve_indexer_policy(
     compress_ratio: int,
     candidate_role: CandidateRole = CandidateRole.NONE,
     capture_variant: Optional[str] = None,
-) -> IndexerPlan:
+) -> IndexerExecutionPolicy:
     select_all = capture_variant == "candidate_all" or (
         capture_variant == "candidate_c2_all" and compress_ratio == 2
     )
@@ -58,6 +58,6 @@ def resolve_indexer_plan(
     )
     candidate_action = CandidateRole.NONE if bypass_candidates else candidate_role
     # Consumers must reject masked top-k entries even when block filtering is bypassed.
-    return IndexerPlan(
+    return IndexerExecutionPolicy(
         select_all, candidate_action, candidate_role is CandidateRole.CONSUME
     )

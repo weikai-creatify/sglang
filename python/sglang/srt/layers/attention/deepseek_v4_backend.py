@@ -68,7 +68,7 @@ from sglang.srt.layers.attention.dsv4.indexer import (
     C4IndexerBackendMixin,
     select_candidate_blocks,
 )
-from sglang.srt.layers.attention.dsv4.indexer_plan import CandidateRole
+from sglang.srt.layers.attention.dsv4.indexer_policy import CandidateRole
 from sglang.srt.layers.attention.dsv4.indexer_topk import (
     apply_decode_candidates,
     mask_topk_scores,
@@ -1951,7 +1951,7 @@ class DeepseekV4AttnBackend(
 
     def init_forward_metadata_in_graph(self, forward_batch: ForwardBatch) -> None:
         from sglang.srt.model_executor.runner_utils.capture_mode import (
-            get_low_ratio_indexer_plan,
+            get_low_ratio_indexer_policy,
         )
 
         # Upgrade Raw->Full so the c4/c128 compress + core_attn + indexer
@@ -1971,7 +1971,7 @@ class DeepseekV4AttnBackend(
         if isinstance(metadata, DSV4Metadata):
             core = metadata.core_metadata
             for ratio in core.low_ratios:
-                if get_low_ratio_indexer_plan(ratio).select_all:
+                if get_low_ratio_indexer_policy(ratio).select_all:
                     # Share the full-position indices across layers of this ratio.
                     fill_all_compressed_indices(
                         core.page_table,
@@ -3213,13 +3213,13 @@ class DeepseekV4AttnBackend(
 
     def _low_ratio_index_topk_decode(self, layer, x, q_lora, pos) -> None:
         from sglang.srt.model_executor.runner_utils.capture_mode import (
-            get_low_ratio_indexer_plan,
+            get_low_ratio_indexer_policy,
         )
 
-        plan = get_low_ratio_indexer_plan(
+        policy = get_low_ratio_indexer_policy(
             layer.compress_ratio, layer.indexer.candidate_role
         )
-        if plan.select_all:
+        if policy.select_all:
             # The compressor still writes index K for later, longer contexts.
             return
 
@@ -3291,7 +3291,7 @@ class DeepseekV4AttnBackend(
         logits, published = apply_decode_candidates(
             logits,
             metadata.c4_seq_lens,
-            plan=plan,
+            policy=policy,
             topk_blocks=indexer.candidate_topk_blocks,
             block_size=indexer.candidate_block_size,
             published=self.candidate_mask,
@@ -3311,7 +3311,7 @@ class DeepseekV4AttnBackend(
             page_size=page_size,
             use_topk_v2=metadata.use_topk_v2,
             topk_metadata=metadata.topk_metadata,
-            mask_topk=plan.mask_topk,
+            mask_topk=policy.mask_topk,
         )
 
     def _low_ratio_index_topk_sm90_decode(self, layer, x, q_lora, req, pos) -> None:

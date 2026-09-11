@@ -10,7 +10,7 @@ from types import SimpleNamespace
 
 import torch
 
-from sglang.srt.layers.attention.dsv4.indexer_plan import CandidateRole
+from sglang.srt.layers.attention.dsv4.indexer_policy import CandidateRole
 from sglang.test.ci.ci_register import register_cuda_ci
 from sglang.test.test_utils import CustomTestCase
 
