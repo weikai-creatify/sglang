@@ -49,6 +49,10 @@ from sglang.srt.layers.attention.base_attn_backend import (
     SharedReadEnds,
 )
 from sglang.srt.layers.attention.dsa.utils import is_dsa_enable_prefill_cp
+from sglang.srt.layers.attention.dsv4.indexer_plan import (
+    CANDIDATE_FILTERED,
+    candidate_graph_limits,
+)
 from sglang.srt.layers.dp_attention import (
     DpPaddingMode,
     set_dp_buffer_len,
@@ -342,18 +346,9 @@ class DecodeCudaGraphRunner(BaseCudaGraphRunner):
             span = text_config.candidate_topk_blocks * text_config.candidate_block_size
             if span > 0:
                 self.candidate_filter_span = span
-                ratios = set(text_config.compress_ratios) & {1, 2}
-                topk = text_config.index_topk
-                variants = []
-                if topk > 0 and ratios:
-                    variants.append(("candidate_all", topk * min(ratios)))
-                    if ratios == {1, 2}:
-                        variants.append(("candidate_c2_all", topk * 2))
-                variants.append(("candidate_unfiltered", span))
-                for variant, limit in variants:
-                    self.candidate_graph_limits.append((variant, min(limit, span)))
-                    if limit >= span:
-                        break
+                self.candidate_graph_limits = candidate_graph_limits(
+                    text_config.compress_ratios, text_config.index_topk, span
+                )
                 logger.info(
                     "Candidate indexer graph limits: %s; use full filtering above %s.",
                     self.candidate_graph_limits,
@@ -623,7 +618,7 @@ class DecodeCudaGraphRunner(BaseCudaGraphRunner):
                 for variant, limit in self.candidate_graph_limits:
                     if max_seq_len <= limit:
                         return variant
-            return "candidate_filtered"
+            return CANDIDATE_FILTERED
         if not getattr(self, "dsa_dual_graph", False):
             return None
         seq_lens_cpu = getattr(forward_batch, "seq_lens_cpu", None)
@@ -1168,7 +1163,7 @@ class DecodeCudaGraphRunner(BaseCudaGraphRunner):
         )
         if getattr(self, "candidate_filter_span", None) is not None:
             dsa_variants = [variant for variant, _ in self.candidate_graph_limits]
-            dsa_variants.append("candidate_filtered")
+            dsa_variants.append(CANDIDATE_FILTERED)
         for bs in capture_range:
             if get_parallel().tp_rank == 0:
                 avail_mem = get_available_gpu_memory(
